@@ -1,4 +1,5 @@
-from flask import Flask
+# -*- coding: utf-8 -*-
+from flask import Flask, jsonify, url_for
 from celery import Celery
 import time
 import random
@@ -14,34 +15,39 @@ celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
 celery.conf.update(app.config)
 
 
-@celery.task
-def do_async_task(msg):
-    print(msg)
-
-
 @celery.task(bind=True)
-def do_async_long_task(self, task_id):
+def do_async_long_task(self, task_flag):
+    print(task_flag + " start")
     delay_time = random.randint(5, 20)
-    self.update_state(state='PROGRESS', meta={'delay_time': delay_time})
-    time.sleep(delay_time)
-    return task_id + "done!"
+    print(delay_time)
+    for i in range(delay_time):
+        self.update_state(state='PROGRESS',
+                          meta={'current': i, 'total': delay_time,
+                                'status': "sleeping"})
+        print(i)
+        time.sleep(1)
+    print(task_flag + " end")
+    return {'current': 100, 'total': 100, 'status': 'awake!',
+            'result': "done!"}
 
 
-@app.route('/longtask', methods=['POST'])
+@app.route('/longtask', methods=['GET', 'POST'])
 def longtask():
-    task_flag = random.randint(1, 100)
+    # task = do_async_long_task.apply_async()
+    task_flag = "task_" + str(random.randint(1, 100))
     task = do_async_long_task.apply_async(args=[task_flag])
-    return "task_flag:" + str(task_flag) + ",task_id:" + str(task.id)
+    return jsonify({'Location': url_for('taskstatus', task_id=task.id),
+                    'task_flag': task_flag})
 
 
 @app.route('/status/<task_id>')
 def taskstatus(task_id):
-    task = long_task.AsyncResult(task_id)
+    task = do_async_long_task.AsyncResult(task_id)
     if task.state == 'PENDING':
         response = {
             'state': task.state,
             'current': 0,
-            'total': 1,
+            'total': 'calculating...',
             'status': 'Pending...'
         }
     elif task.state != 'FAILURE':
@@ -54,7 +60,7 @@ def taskstatus(task_id):
         if 'result' in task.info:
             response['result'] = task.info['result']
     else:
-        # something went wrong in the background job
+        # 异常反馈
         response = {
             'state': task.state,
             'current': 1,
@@ -62,6 +68,7 @@ def taskstatus(task_id):
             'status': str(task.info),  # this is the exception raised
         }
     return jsonify(response)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
