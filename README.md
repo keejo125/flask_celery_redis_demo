@@ -14,9 +14,8 @@
 - 查看任务状态：访问http://127.0.0.1:5000/status/<task_id>
 
 # 一些可能遇到的坑和建议
-- 使用redis的celery安装建议直接通过如下命令一起安装  
-```pip3 install -U celery[redis]```  
-如果单独安装celery和redis会遇到版本问题，导致启动celery报错。
+- 使用redis的celery安装可以通过如下命令一起安装，暗示redis3.0.1和celery4.2.1有冲突，需要降到redis2.10.5  
+```pip3 install -U celery[redis]```    
 - 启动celery时可指定worker数：  
 ```venv/bin/celery worker -A app.celery --loglevel=info -C 1```  
 其中app.celery根据实际初始化celery的py文件定  
