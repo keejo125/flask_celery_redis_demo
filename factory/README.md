@@ -7,7 +7,7 @@
  - 安装requirements.txt中的依赖。
  - 启动redis
  - 启动celery  
- `celery worker -A celery_app.celery --loglevel=info`
+ `celery worker -A manager.celery --loglevel=info`
 - 启动app
 - 新增任务：访问  http://127.0.0.1:5000/longtask
 - 查看任务状态：访问http://127.0.0.1:5000/status/<task_id>
@@ -24,3 +24,16 @@
 其中app.celery根据实际初始化celery的py文件定  
 -C是指起几个worker，默认是根据cpu核数。
 - celery启动时加载task，所以 task代码改动之后需重启celery，否则改动无效。
+
+- 关于celery中使用flask上下文的问题。参考了网上好多材料，都弄的不是很清楚。主要问题就是，celery使用flask上下文需要重写celery的task。
+    - 尝试方法一：
+    直接在任务中使用`with app.app_context()`会提示`RuntimeError: Working outside of application context.`，
+    - 尝试方法二：
+    在celery任务中直接传入app对象，结果发现`delay()`只能传入json格式，不支持传入对象。
+    - 尝试方法三：
+    最后查看flask官网的[说明](http://flask.pocoo.org/docs/1.0/patterns/celery/),给出了一段重写celery.task的代码，但例子中是所有的声明，引用都在单文件中，不存在循环引用的问题，但思路应该是对的。最终尝试可行的方案如下：
+        - 1、在app同级建立一个celery_app，配置和创建一个celery对象，用于给flask提供celery的导入(task和app的初始化)。
+        - 2、在app的构建函数`__init__.py`中参考官网提供一共`make_celery`的函数重写celery的task。
+        - 3、在最外层入口`manager.py`中，执行`make_celery`来给celery的task增加上下文。
+        - 4、最后启动celery的时候需要启动`manager.py`中的celery对象（已经重写了task的celery）。
+        - 5、运行成功。不知道有没有讲清楚，如果理解有偏差，也请指正。
