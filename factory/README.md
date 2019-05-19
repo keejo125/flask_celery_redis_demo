@@ -1,14 +1,27 @@
 ## factory
 
-一个工厂模式的flask+celery+redis的demo，实现通过http请求，利用celery协调redis队列异步执行，并提供接口可查看任务状态。
+一个工厂模式的flask+celery+redis的demo，实现通过http请求，利用celery协调redis队列异步执行，并提供接口可查看任务状态，后台启动一个每分钟执行一次的定时任务。
 
 # 使用步骤
  - 安装redis。
  - 安装requirements.txt中的依赖。
  - 启动redis
+     ```
+    redis-server
+    ```
  - 启动celery  
- `celery worker -A manager.celery --loglevel=info`
-- 启动app
+       - 启动后台定时任务：
+      ```
+      celery worker -A manager.celery -B --loglevel=info
+      ``` 
+      - 不启动后台定时任务：  
+      ```
+      celery worker -A manager.celery --loglevel=info
+      ```
+- 启动app  
+  ```
+  python3 manager.py runserver
+  ```
 - 新增任务：访问  http://127.0.0.1:5000/longtask
 - 查看任务状态：访问http://127.0.0.1:5000/status/<task_id>
 

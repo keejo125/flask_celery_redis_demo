@@ -11,6 +11,9 @@ def create_app(config_name):
     from .main import main as main_blueprint
     app.register_blueprint(main_blueprint)
 
+    from .scheduled import scheduled as scheduled_blueprint
+    app.register_blueprint(scheduled_blueprint)
+
     return app
 
 

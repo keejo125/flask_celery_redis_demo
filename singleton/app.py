@@ -1,18 +1,37 @@
 # -*- coding: utf-8 -*-
 from flask import Flask, jsonify, url_for
 from celery import Celery
+from celery.schedules import crontab
 import time
 import random
 
 
 app = Flask(__name__)
-app.config['CELERY_BROKER_URL'] = "redis://localhost:6379/0"
-app.config['CELERY_RESULT_BACKEND'] = "redis://localhost:6379/0"
+# 单独配置方式
+# app.config['CELERY_BROKER_URL'] = "redis://localhost:6379/0"
+# app.config['CELERY_RESULT_BACKEND'] = "redis://localhost:6379/0"
+# 批量配置方式
+app.config.update(
+    CELERY_BROKER_URL = "redis://localhost:6379/0",
+    CELERY_RESULT_BACKEND = 'redis://localhost:6379/0',
+    CELERYBEAT_SCHEDULE = {
+        'add-every-minute': {
+        'task': 'app.scheduled_task',
+        'schedule': crontab(minute='*'),
+        }
+    },
+    CELERY_TIMEZONE='Asia/Shanghai'
+)
 
 
 # Celery configuration
 celery = Celery(app.name, broker=app.config['CELERY_BROKER_URL'])
 celery.conf.update(app.config)
+
+
+@celery.task
+def scheduled_task(*args, **kwargs):
+    print(time.strftime('%Y.%m.%d %H:%M:%S', time.localtime(time.time())))
 
 
 @celery.task(bind=True)
