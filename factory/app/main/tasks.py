@@ -3,6 +3,7 @@ from celery_app import celery
 import time
 import random
 
+
 @celery.task(bind=True)
 def main_task(self, task_flag):
     print(task_flag + " app.main.task start")
